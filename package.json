@@ -1,0 +1,25 @@
+{
+  "name": "supergrok-usage-kde-widget",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "url": "https://github.com/rj-xy/supergrok-usage-kde-widget"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "plasma:restart": "systemctl --user restart plasma-plasmashell",
+    "build": "tsc && node scripts/emit-qml-logic.ts",
+    "test": "npm run build && node --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "install:widget": "bash scripts/install.sh",
+    "install:copy": "bash scripts/install.sh --copy",
+    "install:panel": "bash scripts/install.sh --add-to-panel"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
+  }
+}

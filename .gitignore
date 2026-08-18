@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.qmlc
+*~
+.DS_Store
+.idea/
+.vscode/

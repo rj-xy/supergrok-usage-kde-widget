@@ -7,7 +7,7 @@
         "Icon": "speedometer",
         "Category": "System Information",
         "License": "MIT",
-        "Version": "1.1.0",
+        "Version": "1.2.0",
         "Website": "https://github.com/rj-xy/supergrok-usage-kde-widget",
         "EnabledByDefault": true,
         "FormFactors": [

@@ -50,6 +50,31 @@ export function timeoutSeconds(value: unknown): number {
   return Math.max(MIN_TIMEOUT_SECS, Math.min(MAX_TIMEOUT_SECS, Math.round(seconds)));
 }
 
+export function fileUrlToPath(url: unknown): string {
+  let s = String(url ?? "").trim();
+  if (s.indexOf("file://") === 0) {
+    s = s.slice(7);
+    if (/^\/[A-Za-z]:/.test(s))
+      s = s.slice(1);
+    try {
+      s = decodeURIComponent(s);
+    } catch (e) {
+      // keep the sliced path if the URL is malformed
+    }
+  }
+  return s;
+}
+
+export function resolveBinary(configured: unknown, bundled: unknown): string {
+  const custom = String(configured ?? "").trim();
+  if (custom)
+    return custom;
+  const bundledPath = String(bundled ?? "").trim();
+  if (bundledPath)
+    return bundledPath;
+  return DEFAULT_BINARY;
+}
+
 export function buildCommand(binary: unknown, timeoutSecs: unknown): string {
   const bin = String(binary ?? "").trim() || DEFAULT_BINARY;
   return ["timeout", "-k", String(TIMEOUT_KILL_GRACE_SECS), String(timeoutSeconds(timeoutSecs)),

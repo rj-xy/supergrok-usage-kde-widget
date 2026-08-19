@@ -29,7 +29,7 @@ KCM.SimpleKCM {
         QQC2.TextField {
             id: binaryPath
             Kirigami.FormData.label: i18n("Fetcher path:")
-            placeholderText: i18n("supergrok-usage-kde-widget (from PATH)")
+            placeholderText: i18n("bundled helper (leave empty)")
         }
         QQC2.CheckBox {
             id: showPercent

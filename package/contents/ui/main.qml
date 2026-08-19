@@ -124,7 +124,9 @@ PlasmoidItem {
     }
 
     function currentCommand() {
-        return Logic.buildCommand(Plasmoid.configuration.binaryPath, root.fetchTimeoutSecs);
+        const bundled = Logic.fileUrlToPath(Qt.resolvedUrl("../code/supergrok-usage-kde-widget"));
+        const bin = Logic.resolveBinary(Plasmoid.configuration.binaryPath, bundled);
+        return Logic.buildCommand(bin, root.fetchTimeoutSecs);
     }
 
     function refresh() {

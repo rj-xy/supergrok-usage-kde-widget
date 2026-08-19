@@ -3,8 +3,10 @@ import test from "node:test"
 
 import {
     buildCommand,
+    fileUrlToPath,
     formatResetAbsolute,
     parseReport,
+    resolveBinary,
     severityOf,
 } from "../dist/logic.js"
 
@@ -41,6 +43,18 @@ test("parseReport reads the weekly pool and product split", () => {
 test("parseReport rejects empty and invalid input", () => {
   assert.equal(parseReport("").ok, false);
   assert.equal(parseReport("not-json").ok, false);
+});
+
+test("fileUrlToPath strips the file:// prefix", () => {
+  assert.equal(fileUrlToPath("file:///home/rj/helper"), "/home/rj/helper");
+  assert.equal(fileUrlToPath("file:///opt/my%20bin/helper"), "/opt/my bin/helper");
+  assert.equal(fileUrlToPath("/already/a/path"), "/already/a/path");
+});
+
+test("resolveBinary prefers a configured path, then the bundled helper", () => {
+  assert.equal(resolveBinary("/opt/custom", "/bundled"), "/opt/custom");
+  assert.equal(resolveBinary("  ", "/bundled"), "/bundled");
+  assert.equal(resolveBinary("", ""), "supergrok-usage-kde-widget");
 });
 
 test("buildCommand quotes the binary for KShell", () => {

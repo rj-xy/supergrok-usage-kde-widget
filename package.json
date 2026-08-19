@@ -1,6 +1,6 @@
 {
   "name": "supergrok-usage-kde-widget",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "repository": {
@@ -17,11 +17,13 @@
     "install:widget": "bash scripts/install.sh",
     "install:copy": "bash scripts/install.sh --copy",
     "install:panel": "bash scripts/install.sh --add-to-panel",
+    "uninstall": "bash scripts/uninstall.sh",
+    "pack:plasmoid": "bash scripts/pack-plasmoid.sh",
     "release": "bash scripts/release.sh"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
     "tsx": "^4.23.12",
-    "typescript": "^5.9.2"
+    "typescript": "^6.0.3"
   }
 }

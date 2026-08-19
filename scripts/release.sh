@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Tag rX.Y.Z, pack a named source archive, and publish a GitHub release.
+# Tag rX.Y.Z, pack source + Store kpackage, and publish a GitHub release.
 #
 # The git tag is rX.Y.Z (so GitHub also serves /archive/rX.Y.Z.tar.gz).
-# The attached asset is <name>-X.Y.Z.tar.gz — the version without the r prefix.
+# <name>-X.Y.Z.tar.gz is the KPackage Get New Widgets installs (metadata.json
+# at the archive root). <name>-X.Y.Z-src.tar.gz is the git source tree.
 #
 # Usage:
 #   npm run release                 # current package.json version
@@ -85,7 +86,9 @@ esac
 
 TAG="r${NEW}"
 ARCHIVE_NAME="${NAME}-${NEW}.tar.gz"
+SRC_ARCHIVE_NAME="${NAME}-${NEW}-src.tar.gz"
 ARCHIVE="$ROOT/dist/${ARCHIVE_NAME}"
+SRC_ARCHIVE="$ROOT/dist/${SRC_ARCHIVE_NAME}"
 ASSET_URL="${REPO_URL}/releases/download/${TAG}/${ARCHIVE_NAME}"
 TAG_URL="${REPO_URL}/releases/tag/${TAG}"
 
@@ -113,7 +116,8 @@ fi
 echo "Current version: ${CURRENT}"
 echo "Release version: ${NEW}"
 echo "Git tag:         ${TAG}"
-echo "Archive:         ${ARCHIVE_NAME}"
+echo "Store kpackage:  ${ARCHIVE_NAME}"
+echo "Source archive:  ${SRC_ARCHIVE_NAME}"
 echo "Prefix:          ${NAME}-${NEW}/"
 if [[ "$NO_PUSH" -eq 1 ]]; then
     echo "Push:            no"
@@ -178,28 +182,34 @@ fi
 echo "› tag ${TAG}"
 git tag -a "$TAG" -m "Release ${TAG}"
 
-echo "› archive ${ARCHIVE_NAME}"
+echo "› source archive ${SRC_ARCHIVE_NAME}"
 mkdir -p "$ROOT/dist"
-git archive --format=tar.gz --prefix="${NAME}-${NEW}/" -o "$ARCHIVE" "$TAG"
+git archive --format=tar.gz --prefix="${NAME}-${NEW}/" -o "$SRC_ARCHIVE" "$TAG"
 
 top=""
 while IFS= read -r line; do
     top="$line"
     break
-done < <(tar -tzf "$ARCHIVE")
+done < <(tar -tzf "$SRC_ARCHIVE")
 if [[ "$top" != "${NAME}-${NEW}/" ]]; then
-    echo "✗ archive prefix is ${top:-empty}, expected ${NAME}-${NEW}/" >&2
+    echo "✗ source prefix is ${top:-empty}, expected ${NAME}-${NEW}/" >&2
     git tag -d "$TAG" >/dev/null
     exit 1
 fi
+echo "› wrote ${SRC_ARCHIVE}"
 
-echo "› wrote ${ARCHIVE}"
+echo "› store kpackage ${ARCHIVE_NAME}"
+if ! bash "$ROOT/scripts/pack-plasmoid.sh" --out="$ARCHIVE"; then
+    echo "✗ failed to pack kpackage" >&2
+    git tag -d "$TAG" >/dev/null
+    exit 1
+fi
 
 if [[ "$NO_PUSH" -eq 1 ]]; then
     echo
     echo "Tagged ${TAG} locally. Push later with:"
     echo "  git push --atomic origin HEAD refs/tags/${TAG}"
-    echo "  gh release create ${TAG} --title ${TAG} --generate-notes ${ARCHIVE}"
+    echo "  gh release create ${TAG} --title ${TAG} --generate-notes ${ARCHIVE} ${SRC_ARCHIVE}"
     exit 0
 fi
 
@@ -217,7 +227,8 @@ gh release create "$TAG" \
     --repo "$REPO_SLUG" \
     --title "$TAG" \
     --generate-notes \
-    "$ARCHIVE"
+    "$ARCHIVE" \
+    "$SRC_ARCHIVE"
 
 echo
 echo "Released ${TAG}"

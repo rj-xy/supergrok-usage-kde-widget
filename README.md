@@ -1,4 +1,6 @@
-# SuperGrok Usage
+# SuperGrok Usage KDE Plasma 6 Widget
+
+Available at the KDE Store: [store.kde.org/p/2368916/](https://store.kde.org/p/2368916/)
 
 KDE Plasma 6 widget for the weekly SuperGrok pool: percent used, reset time, and the Build / Chat / Imagine split.
 
@@ -8,7 +10,21 @@ The panel shows the weekly percent. Click it for the product split and reset tim
 
 ![Popup with 20% used, Grok Build 15%, Chat 3%, Imagine 2%](screenshots/taskbar-widget-expanded.png)
 
-Sign in once with `grok login`.
+## Installation
+
+### KDE Store
+
+1. Right-click the panel or desktop → **Add Widgets…**
+2. **Get New…** → **Download New Plasma Widgets**
+3. Search for **SuperGrok Usage** (the listing title is `supergrok-usage`)
+4. Click **Install**
+5. Drag **SuperGrok Usage** onto the panel
+
+The listing is [store.kde.org/p/2368916/](https://store.kde.org/p/2368916/). Discover can install the same add-on if you search for **SuperGrok**.
+
+Sign in once with `grok login`. Fetching usage needs Node.js on your `PATH` (the Store package includes the helper).
+
+## Development
 
 All three `install:*` commands build the project first, then put two things on your account:
 
@@ -27,6 +43,9 @@ They differ only in **how** those files are installed, and whether the applet is
 npm run build            # compile TypeScript (needed after src/ or QML helper edits)
 npm run plasma:restart   # reload the panel so it picks up QML / logic.js
 npm test                 # build, then run tests
+npm run pack:plasmoid    # KDE Store / Get New Widgets archive (metadata.json at root)
+npm run release          # tag rX.Y.Z, pack Store kpackage + source, publish GitHub release
+npm run uninstall        # remove the user applet, helper, and cache
 ```
 
 After a QML or `src/logic.ts` change, `npm run build` then `npm run plasma:restart`.

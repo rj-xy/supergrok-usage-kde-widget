@@ -10,6 +10,8 @@ type PlasmaMetadata = {
   };
 };
 
+const METADATA_PATHS = ["package-grok/metadata.json", "package-zai/metadata.json"];
+
 export function applyVersions(
   version: string,
   root = join(dirname(fileURLToPath(import.meta.url)), ".."),
@@ -19,16 +21,18 @@ export function applyVersions(
     throw new Error(`invalid version: ${version}`);
   const [, maj, min] = match;
 
-  const metaPath = join(root, "package", "metadata.json");
-  const meta = JSON.parse(readFileSync(metaPath, "utf8")) as PlasmaMetadata;
-  if (meta.KPlugin.Version !== version) {
-    meta.KPlugin.Version = version;
-    writeFileSync(metaPath, `${JSON.stringify(meta, null, 4)}\n`);
+  for (const rel of METADATA_PATHS) {
+    const metaPath = join(root, rel);
+    const meta = JSON.parse(readFileSync(metaPath, "utf8")) as PlasmaMetadata;
+    if (meta.KPlugin.Version !== version) {
+      meta.KPlugin.Version = version;
+      writeFileSync(metaPath, `${JSON.stringify(meta, null, 4)}\n`);
+    }
   }
 
-  const constsPath = join(root, "src", "consts.ts");
-  const consts = readFileSync(constsPath, "utf8");
-  const next = consts
+  const grokConstsPath = join(root, "src", "grok", "consts.ts");
+  const grokConsts = readFileSync(grokConstsPath, "utf8");
+  const nextGrok = grokConsts
     .replace(
       /export const CLIENT_VERSION = "[^"]*";/,
       `export const CLIENT_VERSION = "${version}";`,
@@ -37,10 +41,24 @@ export function applyVersions(
       /export const USER_AGENT = "supergrok-usage-kde-widget\/[^"]*";/,
       `export const USER_AGENT = "supergrok-usage-kde-widget/${maj}.${min}";`,
     );
-  if (!next.includes(`export const CLIENT_VERSION = "${version}";`))
-    throw new Error("failed to update CLIENT_VERSION in src/consts.ts");
-  if (next !== consts)
-    writeFileSync(constsPath, next);
+  if (!nextGrok.includes(`export const CLIENT_VERSION = "${version}";`))
+    throw new Error("failed to update CLIENT_VERSION in src/grok/consts.ts");
+  if (!nextGrok.includes(`export const USER_AGENT = "supergrok-usage-kde-widget/${maj}.${min}";`))
+    throw new Error("failed to update USER_AGENT in src/grok/consts.ts");
+  if (nextGrok !== grokConsts)
+    writeFileSync(grokConstsPath, nextGrok);
+
+  const zaiConstsPath = join(root, "src", "zai", "consts.ts");
+  const zaiConsts = readFileSync(zaiConstsPath, "utf8");
+  const nextZai = zaiConsts
+    .replace(
+      /export const USER_AGENT = "zai-usage-kde-widget\/[^"]*";/,
+      `export const USER_AGENT = "zai-usage-kde-widget/${maj}.${min}";`,
+    );
+  if (!nextZai.includes(`export const USER_AGENT = "zai-usage-kde-widget/${maj}.${min}";`))
+    throw new Error("failed to update USER_AGENT in src/zai/consts.ts");
+  if (nextZai !== zaiConsts)
+    writeFileSync(zaiConstsPath, nextZai);
 }
 
 const entry = process.argv[1];

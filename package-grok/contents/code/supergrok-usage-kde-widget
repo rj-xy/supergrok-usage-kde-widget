@@ -15,24 +15,24 @@ resolve_self_dir() {
     [[ "$source" != /* ]] && source="$dir/$source"
     n=$((n + 1))
   done
-  cd "$(dirname "$source")" && pwd
+  cd "$(dirname "$source")" && pwd -P
 }
 
 find_cli() {
-  if [[ -n "${SUPERGROK_ROOT:-}" && -f "${SUPERGROK_ROOT}/dist/cli.js" ]]; then
-    echo "${SUPERGROK_ROOT}/dist/cli.js"
+  if [[ -n "${SUPERGROK_ROOT:-}" && -f "${SUPERGROK_ROOT}/dist/grok/cli.js" ]]; then
+    echo "${SUPERGROK_ROOT}/dist/grok/cli.js"
     return 0
   fi
   local dir
   dir="$(resolve_self_dir)"
-  if [[ -f "$dir/cli/cli.js" ]]; then
-    echo "$dir/cli/cli.js"
+  if [[ -f "$dir/cli/grok/cli.js" ]]; then
+    echo "$dir/cli/grok/cli.js"
     return 0
   fi
   local n=0
   while [[ "$dir" != "/" && "$dir" != "." && -n "$dir" && n -lt 32 ]]; do
-    if [[ -f "$dir/dist/cli.js" && -f "$dir/package.json" ]]; then
-      echo "$dir/dist/cli.js"
+    if [[ -f "$dir/dist/grok/cli.js" && -f "$dir/package.json" ]]; then
+      echo "$dir/dist/grok/cli.js"
       return 0
     fi
     dir="$(dirname "$dir")"

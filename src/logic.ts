@@ -1,39 +1,30 @@
-// Presentation helpers for the SuperGrok Plasma widget.
+// Presentation helpers shared by the usage Plasma widgets.
 // Keep the emitted JS V4-safe: no optional-catch binding, no Unicode property
-// escapes, no Node imports. `npm run build` writes package/contents/code/logic.js
+// escapes, no Node imports. `yarn run build` writes package*/contents/code/logic.js
 // as a QML `.pragma library` (Plasma cannot import TypeScript).
 
 import {
   DEFAULT_BINARY,
+  DEFAULT_DISPLAY_NAME,
   DEFAULT_PLAN,
   DEFAULT_PRODUCT_COLOR,
   DEFAULT_TIMEOUT_SECS,
-  DISPLAY_NAME,
+  FALLBACK_VENDOR_ID,
   MAX_TIMEOUT_SECS,
   MIN_TIMEOUT_SECS,
   MONTHS,
-  PRODUCT_COLORS,
-  PRODUCT_LABELS,
-  PRODUCT_ORDER,
   SAFE_TEXT_DEFAULT_MAX,
+  SEVERITY_COLORS,
   SEVERITY_CRITICAL_AT,
   SEVERITY_HIGH_AT,
   SEVERITY_MID_AT,
   TIMEOUT_KILL_GRACE_SECS,
-  VENDOR_ID,
 } from "./consts.js";
-import type { ParsedEntry, ParseResult, ProductView, Severity } from "./types.js";
+import type { MetricView, ParsedEntry, ParseResult, ProductView, Severity } from "./types.js";
 
 export {
-  DEFAULT_BINARY,
-  DEFAULT_TIMEOUT_SECS,
   EXIT_KILLED,
   EXIT_TIMED_OUT,
-  MAX_TIMEOUT_SECS,
-  MIN_TIMEOUT_SECS,
-  PRODUCT_COLORS,
-  PRODUCT_LABELS,
-  PRODUCT_ORDER,
   TIMEOUT_KILL_GRACE_SECS,
 } from "./consts.js";
 
@@ -65,18 +56,18 @@ export function fileUrlToPath(url: unknown): string {
   return s;
 }
 
-export function resolveBinary(configured: unknown, bundled: unknown): string {
+export function resolveBinary(configured: unknown, bundled: unknown, fallback: unknown): string {
   const custom = String(configured ?? "").trim();
   if (custom)
     return custom;
   const bundledPath = String(bundled ?? "").trim();
   if (bundledPath)
     return bundledPath;
-  return DEFAULT_BINARY;
+  return String(fallback ?? "").trim();
 }
 
-export function buildCommand(binary: unknown, timeoutSecs: unknown): string {
-  const bin = String(binary ?? "").trim() || DEFAULT_BINARY;
+export function buildCommand(binary: unknown, timeoutSecs: unknown, fallback: unknown): string {
+  const bin = String(binary ?? "").trim() || String(fallback ?? "").trim() || DEFAULT_BINARY;
   return ["timeout", "-k", String(TIMEOUT_KILL_GRACE_SECS), String(timeoutSeconds(timeoutSecs)),
     bin, "usage", "--json"].map(shellQuote).join(" ");
 }
@@ -105,17 +96,8 @@ export function severityOf(percent: unknown): Severity {
         : "low";
 }
 
-export function productColor(product: string): string {
-  return PRODUCT_COLORS[product] ?? DEFAULT_PRODUCT_COLOR;
-}
-
-export function productLabel(product: string): string {
-  return PRODUCT_LABELS[product] ?? (product.replace("Grok", "").trim() || product);
-}
-
-export function productSortKey(product: string): [number, string] {
-  const idx = (PRODUCT_ORDER as readonly string[]).indexOf(product);
-  return [idx === -1 ? PRODUCT_ORDER.length : idx, product];
+export function severityColor(severity: unknown): string {
+  return SEVERITY_COLORS[String(severity)] ?? DEFAULT_PRODUCT_COLOR;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -136,7 +118,28 @@ function normalizeProduct(raw: unknown): ProductView | null {
     product: product,
     label: label,
     percent: percent,
-    color: productColor(product),
+    color: safeText(raw.color, 24) || DEFAULT_PRODUCT_COLOR,
+  };
+}
+
+function normalizeMetric(raw: unknown): MetricView | null {
+  if (!isRecord(raw))
+    return null;
+  const percent = finitePercent(raw.percent);
+  if (percent === null)
+    return null;
+  const id = safeText(raw.id, 40);
+  const label = safeText(raw.label, 60) || id;
+  if (!label)
+    return null;
+  const severity = String(raw.severity ?? "low");
+  return {
+    id: id,
+    label: label,
+    percent: percent,
+    resetAt: safeText(raw.reset_at, 64),
+    severity: (severity === "mid" || severity === "high" || severity === "critical") ? severity : "low",
+    value: safeText(raw.value, 120),
   };
 }
 
@@ -146,9 +149,12 @@ function normalizeEntry(raw: unknown): ParsedEntry {
   const products = Array.isArray(rec.product_usage)
     ? rec.product_usage.map(normalizeProduct).filter((item): item is ProductView => item !== null)
     : [];
+  const metrics = Array.isArray(rec.metrics)
+    ? rec.metrics.map(normalizeMetric).filter((item): item is MetricView => item !== null)
+    : [];
   return {
-    id: VENDOR_ID,
-    label: safeText(rec.display_name, 80) || DISPLAY_NAME,
+    id: safeText(rec.id, 40) || FALLBACK_VENDOR_ID,
+    label: safeText(rec.display_name, 80) || DEFAULT_DISPLAY_NAME,
     plan: safeText(rec.plan, 80) || DEFAULT_PLAN,
     status: safeText(rec.status, 24) || "ready",
     stale: rec.stale === true,
@@ -158,6 +164,7 @@ function normalizeEntry(raw: unknown): ParsedEntry {
     resetAt: safeText(rec.reset_at, 64),
     resetLabel: safeText(rec.reset_label, 80),
     products: products,
+    metrics: metrics,
   };
 }
 

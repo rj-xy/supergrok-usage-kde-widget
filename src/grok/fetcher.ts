@@ -1,56 +1,52 @@
 import { spawn } from "node:child_process";
-import { accessSync, chmodSync, constants, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { accessSync, constants, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { env } from "node:process";
 
+import { cachePathFor, loadCachedReport, saveCachedReport } from "../cache.js";
+import { httpGetJson } from "../http.js";
+import { finitePercent, formatResetAbsolute, severityOf } from "../logic.js";
+import { loadOpencodeAuth } from "../opencode.js";
+import { errorReportFor } from "../report.js";
+import type { AuthEntry, JsonObject, UsageEntry, UsageReport } from "../types.js";
+import { expandTilde, isRecord, nowRfc3339 } from "../util.js";
 import {
   BILLING_URL,
   CACHE_DIR_NAME,
-  CACHE_FILE_NAME,
   CLIENT_TYPE,
   CLIENT_VERSION,
   DEFAULT_PLAN,
   DISPLAY_NAME,
-  FETCH_TIMEOUT_MS,
   REFRESH_TIMEOUT_MS,
   SETTINGS_URL,
   TOKEN_SKEW_SECONDS,
   USER_AGENT,
   VENDOR_ID,
-} from "./consts.js";
-import {
-  finitePercent,
-  formatResetAbsolute,
+  productColor,
   productLabel,
   productSortKey,
-  severityOf,
-} from "./logic.js";
-import type { AuthEntry, JsonObject, UsageEntry, UsageReport } from "./types.js";
+} from "./consts.js";
 
 export { BILLING_URL, SETTINGS_URL } from "./consts.js";
 
 export function grokHome(): string {
   const raw = env.GROK_HOME;
   if (raw)
-    return raw.replace(/^~(?=\/|$)/, homedir());
+    return expandTilde(raw);
   return join(homedir(), ".grok");
 }
 
 export function cachePath(): string {
-  const base = env.XDG_CACHE_HOME || join(homedir(), ".cache");
-  return join(base, CACHE_DIR_NAME, CACHE_FILE_NAME);
+  return cachePathFor(CACHE_DIR_NAME);
 }
 
 export function authPath(): string {
   return join(grokHome(), "auth.json");
 }
 
-function isRecord(value: unknown): value is JsonObject {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
-export function loadAuth(): AuthEntry {
+// The `grok login` token from ~/.grok/auth.json.
+function loadGrokCliAuth(): AuthEntry {
   const path = authPath();
   let data: unknown;
   try {
@@ -58,7 +54,7 @@ export function loadAuth(): AuthEntry {
   } catch (err) {
     const code = err && typeof err === "object" && "code" in err ? String(err.code) : "";
     if (code === "ENOENT")
-      throw new Error("no Grok login found; run `grok login`");
+      throw new Error("no Grok login found; run `grok login` (or sign in to SuperGrok in opencode)");
     throw new Error("could not read ~/.grok/auth.json");
   }
   if (!isRecord(data) || Object.keys(data).length === 0)
@@ -73,6 +69,29 @@ export function loadAuth(): AuthEntry {
     throw new Error("Grok login has no usable token; run `grok login`");
   const preferred = entries.filter((entry) => String(entry.auth_mode ?? "").toLowerCase() === "oidc");
   return preferred[0] ?? entries[0]!;
+}
+
+// Auth priority: GROK_API_KEY → the `grok login` token from ~/.grok/auth.json
+// (it self-refreshes via the CLI) → opencode auth.json (SuperGrok / Grok / xAI
+// entries).
+export function loadAuth(): AuthEntry {
+  const override = (env.GROK_API_KEY ?? "").trim();
+  if (override)
+    return { key: override };
+  try {
+    return loadGrokCliAuth();
+  } catch {
+    // No `grok login` token — try opencode's.
+  }
+  const auth = loadOpencodeAuth({
+    providers: ["supergrok", "grok", "xai"],
+    providerPrefix: "grok",
+    envFile: "GROK_AUTH_FILE",
+    missingError: "no Grok login found; run `grok login` (or sign in to SuperGrok in opencode)",
+  });
+  if (tokenExpired(auth))
+    throw new Error("Grok login expired; run `grok login` or sign in to SuperGrok in opencode again");
+  return auth;
 }
 
 export function tokenExpired(entry: Pick<AuthEntry, "expires_at">, skewSeconds = TOKEN_SKEW_SECONDS): boolean {
@@ -97,7 +116,7 @@ function isExecutable(path: string): boolean {
 export function findGrokBinary(): string | null {
   const candidates: string[] = [];
   if (env.GROK_BINARY)
-    candidates.push(env.GROK_BINARY.replace(/^~(?=\/|$)/, homedir()));
+    candidates.push(expandTilde(env.GROK_BINARY));
   candidates.push(join(grokHome(), "bin", "grok"));
   for (const part of (env.PATH ?? "").split(":")) {
     if (part)
@@ -177,38 +196,13 @@ export async function nudgeTokenRefresh(): Promise<void> {
   });
 }
 
-export async function httpGetJson(url: string, token: string): Promise<[number, unknown]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "x-xai-token-auth": "xai-grok-cli",
-        Accept: "application/json",
-        "User-Agent": USER_AGENT,
-      },
-      signal: controller.signal,
-    });
-    let parsed: unknown = { error: "http_error" };
-    try {
-      parsed = await response.json();
-    } catch {
-      parsed = { error: "http_error" };
-    }
-    return [response.status, parsed];
-  } catch (err) {
-    if (err && typeof err === "object" && "name" in err && err.name === "AbortError")
-      throw new Error("billing request timed out");
-    throw new Error("could not fetch SuperGrok usage");
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-export function nowRfc3339(): string {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+function getJson(url: string, token: string): Promise<[number, unknown]> {
+  return httpGetJson(url, token, {
+    userAgent: USER_AGENT,
+    headers: { "x-xai-token-auth": "xai-grok-cli" },
+    timeoutError: "billing request timed out",
+    networkError: "could not fetch SuperGrok usage",
+  });
 }
 
 export function reportFromBilling(billing: unknown, plan: string): UsageReport {
@@ -238,7 +232,12 @@ export function reportFromBilling(billing: unknown, plan: string): UsageReport {
       const pct = finitePercent(item.usagePercent);
       if (!product || pct === null)
         continue;
-      products.push({ product, label: productLabel(product), percent: pct });
+      products.push({
+        product,
+        label: productLabel(product),
+        percent: pct,
+        color: productColor(product),
+      });
     }
   }
   products.sort((a, b) => {
@@ -284,56 +283,19 @@ export function reportFromBilling(billing: unknown, plan: string): UsageReport {
 }
 
 export function errorReport(message: string, stale?: UsageReport | null): UsageReport {
-  const cached = stale?.entries[0];
-  if (cached) {
-    return {
-      primary: VENDOR_ID,
-      entries: [{ ...cached, stale: true, error: message, status: "ready" }],
-    };
-  }
-  return {
-    primary: VENDOR_ID,
-    entries: [{
-      id: VENDOR_ID,
-      name: VENDOR_ID,
-      display_name: DISPLAY_NAME,
-      plan: DEFAULT_PLAN,
-      status: "error",
-      stale: false,
-      error: message,
-      fetched_at: nowRfc3339(),
-      used_percent: null,
-      reset_at: null,
-      reset_label: "",
-      product_usage: [],
-      metrics: [],
-      sections: [],
-    }],
-  };
+  return errorReportFor(
+    { id: VENDOR_ID, displayName: DISPLAY_NAME, defaultPlan: DEFAULT_PLAN },
+    message,
+    stale,
+  );
 }
 
 export function loadCache(): UsageReport | null {
-  try {
-    const data: unknown = JSON.parse(readFileSync(cachePath(), "utf8"));
-    if (isRecord(data) && Array.isArray(data.entries))
-      return data as UsageReport;
-  } catch {
-    return null;
-  }
-  return null;
+  return loadCachedReport(cachePath());
 }
 
 export function saveCache(report: UsageReport): void {
-  const path = cachePath();
-  try {
-    mkdirSync(dirname(path), { recursive: true });
-    const tmp = `${path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(report));
-    chmodSync(tmp, 0o600);
-    renameSync(tmp, path);
-  } catch {
-    // cache is optional
-  }
+  saveCachedReport(cachePath(), report);
 }
 
 export async function fetchLive(): Promise<UsageReport> {
@@ -343,11 +305,11 @@ export async function fetchLive(): Promise<UsageReport> {
     entry = loadAuth();
   }
 
-  let [status, billing] = await httpGetJson(BILLING_URL, entry.key);
+  let [status, billing] = await getJson(BILLING_URL, entry.key);
   if (status === 401 || status === 403) {
     await nudgeTokenRefresh();
     entry = loadAuth();
-    [status, billing] = await httpGetJson(BILLING_URL, entry.key);
+    [status, billing] = await getJson(BILLING_URL, entry.key);
   }
   if (status === 401 || status === 403)
     throw new Error("Grok login expired; run `grok login`");
@@ -355,7 +317,7 @@ export async function fetchLive(): Promise<UsageReport> {
     throw new Error(`billing request failed (HTTP ${status})`);
 
   let plan = DEFAULT_PLAN;
-  const [settingsStatus, settings] = await httpGetJson(SETTINGS_URL, entry.key);
+  const [settingsStatus, settings] = await getJson(SETTINGS_URL, entry.key);
   if (settingsStatus === 200 && isRecord(settings)) {
     const display = String(settings.subscription_tier_display ?? "").trim();
     if (display)
@@ -378,6 +340,8 @@ export async function buildReport(): Promise<UsageReport> {
 
 export function printPretty(report: UsageReport): void {
   const entry = report.entries[0];
+  if (!entry)
+    return;
   if (entry.status === "error") {
     console.log(`⚠  ${entry.error || "error"}`);
     return;

@@ -82,7 +82,9 @@ PlasmoidItem {
         if (root.entry && root.entry.status === "error" && root.entry.error)
             return root.entry.error;
         if (root.entry && root.entry.stale)
-            return i18n("Showing cached usage.");
+            return root.entry.error
+                ? i18n("Showing cached usage.") + "\n" + root.entry.error
+                : i18n("Showing cached usage.");
         return "";
     }
 
@@ -125,8 +127,8 @@ PlasmoidItem {
 
     function currentCommand() {
         const bundled = Logic.fileUrlToPath(Qt.resolvedUrl("../code/supergrok-usage-kde-widget"));
-        const bin = Logic.resolveBinary(Plasmoid.configuration.binaryPath, bundled);
-        return Logic.buildCommand(bin, root.fetchTimeoutSecs);
+        const bin = Logic.resolveBinary(Plasmoid.configuration.binaryPath, bundled, "supergrok-usage-kde-widget");
+        return Logic.buildCommand(bin, root.fetchTimeoutSecs, "supergrok-usage-kde-widget");
     }
 
     function refresh() {

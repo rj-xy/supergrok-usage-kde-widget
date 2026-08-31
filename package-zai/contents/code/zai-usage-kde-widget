@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Locate Node (plasmashell does not inherit nvm) and run the compiled CLI.
+# Store packs ship cli/ next to this script. A git checkout walks up to dist/.
+set -euo pipefail
+
+NAME="zai-usage-kde-widget"
+
+resolve_self_dir() {
+  local source="${BASH_SOURCE[0]}"
+  local n=0
+  while [[ -L "$source" && n -lt 16 ]]; do
+    local dir
+    dir="$(cd "$(dirname "$source")" && pwd)"
+    source="$(readlink "$source")"
+    [[ "$source" != /* ]] && source="$dir/$source"
+    n=$((n + 1))
+  done
+  cd "$(dirname "$source")" && pwd -P
+}
+
+find_cli() {
+  if [[ -n "${ZAI_ROOT:-}" && -f "${ZAI_ROOT}/dist/zai/cli.js" ]]; then
+    echo "${ZAI_ROOT}/dist/zai/cli.js"
+    return 0
+  fi
+  local dir
+  dir="$(resolve_self_dir)"
+  if [[ -f "$dir/cli/zai/cli.js" ]]; then
+    echo "$dir/cli/zai/cli.js"
+    return 0
+  fi
+  local n=0
+  while [[ "$dir" != "/" && "$dir" != "." && -n "$dir" && n -lt 32 ]]; do
+    if [[ -f "$dir/dist/zai/cli.js" && -f "$dir/package.json" ]]; then
+      echo "$dir/dist/zai/cli.js"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+    n=$((n + 1))
+  done
+  return 1
+}
+
+CLI="$(find_cli)" || {
+  echo "$NAME: cannot find zai/cli.js. Run yarn run build, or install the Store package." >&2
+  exit 127
+}
+
+resolve_node() {
+  if [[ -n "${ZAI_NODE:-}" && -x "${ZAI_NODE}" ]]; then
+    echo "${ZAI_NODE}"
+    return 0
+  fi
+  if command -v node >/dev/null 2>&1; then
+    command -v node
+    return 0
+  fi
+  local cand
+  if [[ -d "${HOME}/.nvm/versions/node" ]]; then
+    cand="$(ls -1d "${HOME}/.nvm/versions/node"/v*/bin/node 2>/dev/null | sort -V | tail -1 || true)"
+    if [[ -n "$cand" && -x "$cand" ]]; then
+      echo "$cand"
+      return 0
+    fi
+  fi
+  for cand in /usr/local/bin/node /usr/bin/node; do
+    if [[ -x "$cand" ]]; then
+      echo "$cand"
+      return 0
+    fi
+  done
+  return 1
+}
+
+NODE="$(resolve_node)" || {
+  echo "$NAME: node not found (install Node.js 20+)" >&2
+  exit 127
+}
+
+exec "$NODE" "$CLI" "$@"

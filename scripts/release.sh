@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-# Tag rX.Y.Z, pack source + Store kpackage, and publish a GitHub release.
+# Tag rX.Y.Z, pack source + Store kpackages, and publish a GitHub release.
 #
 # The git tag is rX.Y.Z (so GitHub also serves /archive/rX.Y.Z.tar.gz).
-# <name>-X.Y.Z.tar.gz is the KPackage Get New Widgets installs (metadata.json
-# at the archive root). <name>-X.Y.Z-src.tar.gz is the git source tree.
+# <name>-X.Y.Z.tar.gz (one per widget) is the KPackage Get New Widgets installs
+# (metadata.json at the archive root). <name>-X.Y.Z-src.tar.gz is the git source
+# tree.
 #
 # Usage:
-#   npm run release                 # current package.json version
-#   npm run release -- patch
-#   npm run release -- minor
-#   npm run release -- major
-#   npm run release -- 1.2.0
-#   npm run release -- --dry-run
-#   npm run release -- 1.2.0 --no-push
+#   yarn run release                 # current package.json version
+#   yarn run release -- patch
+#   yarn run release -- minor
+#   yarn run release -- major
+#   yarn run release -- 1.2.0
+#   yarn run release -- --dry-run
+#   yarn run release -- 1.2.0 --no-push
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,7 +24,7 @@ NO_PUSH=0
 BUMP=""
 
 usage() {
-    sed -n '2,14p' "$0" | sed 's/^# \?//'
+    sed -n '2,15p' "$0" | sed 's/^# \?//'
 }
 
 is_semver() {
@@ -86,8 +87,10 @@ esac
 
 TAG="r${NEW}"
 ARCHIVE_NAME="${NAME}-${NEW}.tar.gz"
+ZAI_ARCHIVE_NAME="zai-usage-kde-widget-${NEW}.tar.gz"
 SRC_ARCHIVE_NAME="${NAME}-${NEW}-src.tar.gz"
 ARCHIVE="$ROOT/dist/${ARCHIVE_NAME}"
+ZAI_ARCHIVE="$ROOT/dist/${ZAI_ARCHIVE_NAME}"
 SRC_ARCHIVE="$ROOT/dist/${SRC_ARCHIVE_NAME}"
 ASSET_URL="${REPO_URL}/releases/download/${TAG}/${ARCHIVE_NAME}"
 TAG_URL="${REPO_URL}/releases/tag/${TAG}"
@@ -116,7 +119,7 @@ fi
 echo "Current version: ${CURRENT}"
 echo "Release version: ${NEW}"
 echo "Git tag:         ${TAG}"
-echo "Store kpackage:  ${ARCHIVE_NAME}"
+echo "Store kpackage:  ${ARCHIVE_NAME} + ${ZAI_ARCHIVE_NAME}"
 echo "Source archive:  ${SRC_ARCHIVE_NAME}"
 echo "Prefix:          ${NAME}-${NEW}/"
 if [[ "$NO_PUSH" -eq 1 ]]; then
@@ -134,10 +137,12 @@ fi
 
 RESTORE_PATHS=(
     package.json
-    package-lock.json
-    package/metadata.json
-    src/consts.ts
-    package/contents/code/logic.js
+    package-grok/metadata.json
+    package-zai/metadata.json
+    src/grok/consts.ts
+    src/zai/consts.ts
+    package-grok/contents/code/logic.js
+    package-zai/contents/code/logic.js
 )
 
 restore_version_files() {
@@ -146,11 +151,19 @@ restore_version_files() {
 
 apply_versions() {
     if [[ "$NEW" != "$CURRENT" ]]; then
-        npm version "$NEW" --no-git-tag-version --allow-same-version --ignore-scripts
+        # yarn has no `npm version` equivalent that takes an explicit X.Y.Z,
+        # so rewrite package.json directly (same 2-space formatting).
+        node -e '
+            const fs = require("fs");
+            const [path, version] = process.argv.slice(1);
+            const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+            pkg.version = version;
+            fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+        ' "$ROOT/package.json" "$NEW"
     fi
     local tsx="$ROOT/node_modules/.bin/tsx"
     if [[ ! -x "$tsx" ]]; then
-        echo "✗ tsx not found; run npm install" >&2
+        echo "✗ tsx not found; run yarn install" >&2
         return 1
     fi
     "$tsx" "$ROOT/scripts/apply-versions.ts" "$NEW"
@@ -164,8 +177,8 @@ if ! apply_versions; then
     exit 1
 fi
 
-echo "› npm test"
-if ! npm test; then
+echo "› yarn test"
+if ! yarn test; then
     echo "✗ tests failed; restoring version files" >&2
     restore_version_files
     exit 1
@@ -198,12 +211,19 @@ if [[ "$top" != "${NAME}-${NEW}/" ]]; then
 fi
 echo "› wrote ${SRC_ARCHIVE}"
 
-echo "› store kpackage ${ARCHIVE_NAME}"
-if ! bash "$ROOT/scripts/pack-plasmoid.sh" --out="$ARCHIVE"; then
+echo "› store kpackages ${ARCHIVE_NAME} + ${ZAI_ARCHIVE_NAME}"
+if ! bash "$ROOT/scripts/pack-plasmoid.sh"; then
     echo "✗ failed to pack kpackage" >&2
     git tag -d "$TAG" >/dev/null
     exit 1
 fi
+for archive in "$ARCHIVE" "$ZAI_ARCHIVE"; do
+    if [[ ! -f "$archive" ]]; then
+        echo "✗ missing $archive" >&2
+        git tag -d "$TAG" >/dev/null
+        exit 1
+    fi
+done
 
 if [[ "$NO_PUSH" -eq 1 ]]; then
     echo
@@ -228,6 +248,7 @@ gh release create "$TAG" \
     --title "$TAG" \
     --generate-notes \
     "$ARCHIVE" \
+    "$ZAI_ARCHIVE" \
     "$SRC_ARCHIVE"
 
 echo

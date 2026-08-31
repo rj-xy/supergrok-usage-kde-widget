@@ -4,6 +4,7 @@ export type ProductUsage = {
   product: string;
   label: string;
   percent: number;
+  color?: string;
 };
 
 export type MetricSection = {
@@ -21,6 +22,16 @@ export type UsageMetric = {
   percent: number;
   reset_at: string | null;
   severity: Severity;
+  value?: string;
+};
+
+export type MetricView = {
+  id: string;
+  label: string;
+  percent: number;
+  resetAt: string;
+  severity: Severity;
+  value: string;
 };
 
 export type UsageEntry = {
@@ -41,7 +52,7 @@ export type UsageEntry = {
 };
 
 export type UsageReport = {
-  primary: "supergrok";
+  primary: string;
   entries: [UsageEntry];
 };
 
@@ -60,7 +71,7 @@ export type ProductView = {
 };
 
 export type ParsedEntry = {
-  id: "supergrok";
+  id: string;
   label: string;
   plan: string;
   status: string;
@@ -71,6 +82,7 @@ export type ParsedEntry = {
   resetAt: string;
   resetLabel: string;
   products: ProductView[];
+  metrics: MetricView[];
 };
 
 export type ParseResult =

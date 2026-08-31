@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# Remove the user install (applet, helper, cache). Does not touch grok login.
+# Remove the user installs (applets, helpers, caches). Does not touch grok or
+# opencode logins.
 set -euo pipefail
 
-IDS=(com.rj-xy.supergrokusage com.rj.supergrokusage)
-BIN_DEST="$HOME/.local/bin/supergrok-usage-kde-widget"
-CACHE_DIR="$HOME/.cache/supergrok-usage-kde-widget"
+IDS=(com.rj-xy.zaiusage com.rj.supergrokusage com.rj-xy.supergrokusage)
+BIN_DESTS=(
+    "$HOME/.local/bin/supergrok-usage-kde-widget"
+    "$HOME/.local/bin/zai-usage-kde-widget"
+)
+CACHE_DIRS=(
+    "$HOME/.cache/supergrok-usage-kde-widget"
+    "$HOME/.cache/zai-usage-kde-widget"
+)
 
 if command -v kpackagetool6 >/dev/null 2>&1; then
     for id in "${IDS[@]}"; do
@@ -20,18 +27,22 @@ for id in "${IDS[@]}"; do
     fi
 done
 
-if [[ -L "$BIN_DEST" || -e "$BIN_DEST" ]]; then
-    rm -f -- "$BIN_DEST"
-    echo "› removed $BIN_DEST"
-fi
+for bin_dest in "${BIN_DESTS[@]}"; do
+    if [[ -L "$bin_dest" || -e "$bin_dest" ]]; then
+        rm -f -- "$bin_dest"
+        echo "› removed $bin_dest"
+    fi
+done
 
-if [[ -d "$CACHE_DIR" ]]; then
-    rm -rf -- "$CACHE_DIR"
-    echo "› removed $CACHE_DIR"
-fi
+for cache_dir in "${CACHE_DIRS[@]}"; do
+    if [[ -d "$cache_dir" ]]; then
+        rm -rf -- "$cache_dir"
+        echo "› removed $cache_dir"
+    fi
+done
 
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
     kbuildsycoca6 >/dev/null 2>&1 || true
 fi
 
-echo "Uninstalled SuperGrok Usage (grok login left in place)"
+echo "Uninstalled SuperGrok Usage and Z.ai Usage (logins left in place)"

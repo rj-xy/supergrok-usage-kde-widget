@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# Thin wrapper so ~/.local/bin and older docs still hit the package launcher.
-set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-exec "$ROOT/package/contents/code/supergrok-usage-kde-widget" "$@"

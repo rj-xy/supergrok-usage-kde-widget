@@ -14,7 +14,7 @@ export const API_TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
 export const FIVE_HOUR_MS = 5 * 60 * 60 * 1000;
 export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-export const USER_AGENT = "zai-usage-kde-widget/1.2";
+export const USER_AGENT = "zai-usage-kde-widget/1.3";
 
 export const CACHE_DIR_NAME = "zai-usage-kde-widget";
 

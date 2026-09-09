@@ -9,8 +9,8 @@ export const BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing?format=cr
 export const SETTINGS_URL = "https://cli-chat-proxy.grok.com/v1/settings";
 
 export const CLIENT_TYPE = "supergrok-usage-kde-widget";
-export const CLIENT_VERSION = "1.2.0";
-export const USER_AGENT = "supergrok-usage-kde-widget/1.2";
+export const CLIENT_VERSION = "1.3.0";
+export const USER_AGENT = "supergrok-usage-kde-widget/1.3";
 
 export const CACHE_DIR_NAME = "supergrok-usage-kde-widget";
 

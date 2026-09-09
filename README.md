@@ -4,6 +4,7 @@ Two Plasma 6 panel widgets for AI plan quotas.
 
 ![Panel chip showing Grok 20% used](screenshots/taskbar-widget.png)
 ![Popup with 20% used, Grok Build 15%, Chat 3%, Imagine 2%](screenshots/taskbar-widget-expanded.png)
+![Panel chip showing Z.ai 20% used](screenshots/taskbar-widget-Zai.png)
 
 ## Widgets
 

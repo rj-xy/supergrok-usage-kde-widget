@@ -3,6 +3,9 @@
 # opencode logins.
 set -euo pipefail
 
+# Never use kpackagetool6 --remove here: while the applet dests are symlinks
+# into this repo it follows the link and deletes package-grok/package-zai.
+# Removing the dests below plus kbuildsycoca6 unregisters them just as well.
 IDS=(com.rj-xy.zaiusage com.rj.supergrokusage com.rj-xy.supergrokusage)
 BIN_DESTS=(
     "$HOME/.local/bin/supergrok-usage-kde-widget"
@@ -12,12 +15,6 @@ CACHE_DIRS=(
     "$HOME/.cache/supergrok-usage-kde-widget"
     "$HOME/.cache/zai-usage-kde-widget"
 )
-
-if command -v kpackagetool6 >/dev/null 2>&1; then
-    for id in "${IDS[@]}"; do
-        kpackagetool6 --type Plasma/Applet --remove "$id" >/dev/null 2>&1 || true
-    done
-fi
 
 for id in "${IDS[@]}"; do
     dest="$HOME/.local/share/plasma/plasmoids/$id"

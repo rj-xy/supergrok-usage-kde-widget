@@ -47,6 +47,12 @@ yarn plasma:restart
 build of the archives; `release` commits, tags, and publishes them. (`pack` is
 avoided because yarn reserves it for its own builtin.)
 
+> **Never run `kpackagetool6 --remove` (or the Plasma UI's "Uninstall Widget")
+> while the widgets are symlinked** — it follows the symlink and deletes
+> `package-grok/`/`package-zai/` from the repo. Use `yarn widget:remove` instead.
+> If the files do get wiped, the next `yarn build`/`widget:init`/`dist`/`release`
+> auto-restores them from git.
+
 ## Layout
 
 - `src/` — shared code; `src/grok/`, `src/zai/` — vendor fetchers

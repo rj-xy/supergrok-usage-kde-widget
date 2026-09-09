@@ -7,6 +7,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# shellcheck source=scripts/guard-packages.sh
+source "$ROOT/scripts/guard-packages.sh"
+guard_packages
+
 OUT=""
 VALIDATE=0
 ONLY=""
@@ -20,44 +24,44 @@ usage() {
 
 for arg in "$@"; do
     case "$arg" in
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        --validate) VALIDATE=1 ;;
-        --out|--only)
-            echo "use $arg=VALUE" >&2
-            exit 1
-            ;;
-        --out=*) OUT="${arg#--out=}" ;;
-        --only=*) ONLY="${arg#--only=}" ;;
-        *)
-            echo "unknown argument: $arg" >&2
-            usage >&2
-            exit 1
-            ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    --validate) VALIDATE=1 ;;
+    --out | --only)
+        echo "use $arg=VALUE" >&2
+        exit 1
+        ;;
+    --out=*) OUT="${arg#--out=}" ;;
+    --only=*) ONLY="${arg#--only=}" ;;
+    *)
+        echo "unknown argument: $arg" >&2
+        usage >&2
+        exit 1
+        ;;
     esac
 done
 
-if [[ -n "$OUT" && -z "$ONLY" ]]; then
+if [[ -n $OUT && -z $ONLY ]]; then
     echo "✗ --out=FILE also needs --only=supergrok|zai" >&2
     exit 1
 fi
 case "$ONLY" in
-    ""|supergrok|zai) ;;
-    *)
-        echo "✗ unknown widget: $ONLY" >&2
-        exit 1
-        ;;
+"" | supergrok | zai) ;;
+*)
+    echo "✗ unknown widget: $ONLY" >&2
+    exit 1
+    ;;
 esac
 
 VERSION="$(node -p "require('./package.json').version")"
 
 WIDGETS=()
-if [[ -z "$ONLY" || "$ONLY" == "supergrok" ]]; then
+if [[ -z $ONLY || $ONLY == "supergrok" ]]; then
     WIDGETS+=("package-grok|$(node -p "require('./package.json').name")|supergrok-usage-kde-widget|grok")
 fi
-if [[ -z "$ONLY" || "$ONLY" == "zai" ]]; then
+if [[ -z $ONLY || $ONLY == "zai" ]]; then
     WIDGETS+=("package-zai|zai-usage-kde-widget|zai-usage-kde-widget|zai")
 fi
 
@@ -132,12 +136,12 @@ pack_one() {
     local listing
     listing="$(tar -tzf "$tmp")"
 
-    if ! grep -qx "metadata.json" <<< "$listing"; then
+    if ! grep -qx "metadata.json" <<<"$listing"; then
         echo "✗ archive does not have metadata.json at the root" >&2
         rm -f -- "$tmp"
         exit 1
     fi
-    if grep -qE '(^|/)package(-grok|-zai)?/' <<< "$listing"; then
+    if grep -qE '(^|/)package(-grok|-zai)?/' <<<"$listing"; then
         echo "✗ archive nests package dirs — Get New Widgets will reject it" >&2
         rm -f -- "$tmp"
         exit 1
@@ -155,22 +159,24 @@ pack_one() {
         echo "› wrote $plasmoid"
     fi
 
-    if [[ "$VALIDATE" -eq 1 ]]; then
+    if [[ $VALIDATE -eq 1 ]]; then
         if ! command -v kpackagetool6 >/dev/null 2>&1; then
             echo "✗ kpackagetool6 not found" >&2
             exit 1
         fi
-        local id
+        local id validate_root
         id="$(node -p "require('$stage/metadata.json').KPlugin.Id")"
-        kpackagetool6 --type Plasma/Applet --remove "$id" >/dev/null 2>&1 || true
-        kpackagetool6 --type Plasma/Applet --install "$out"
-        kpackagetool6 --type Plasma/Applet --show "$id" >/dev/null
-        kpackagetool6 --type Plasma/Applet --remove "$id"
+        # Validate in an isolated XDG_DATA_HOME: kpackagetool6 --remove on the
+        # real dest follows the repo symlink and deletes package-grok/-zai.
+        validate_root="$(mktemp -d)"
+        STAGES+=("$validate_root")
+        XDG_DATA_HOME="$validate_root" kpackagetool6 --type Plasma/Applet --install "$out"
+        XDG_DATA_HOME="$validate_root" kpackagetool6 --type Plasma/Applet --show "$id" >/dev/null
         echo "› kpackagetool6 accepted $out"
     fi
 }
 
 for widget in "${WIDGETS[@]}"; do
-    IFS='|' read -r pkg name launcher vendor <<< "$widget"
+    IFS='|' read -r pkg name launcher vendor <<<"$widget"
     pack_one "$pkg" "$name" "$launcher" "$vendor"
 done

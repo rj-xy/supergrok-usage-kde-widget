@@ -19,6 +19,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# shellcheck source=scripts/guard-packages.sh
+source "$ROOT/scripts/guard-packages.sh"
+guard_packages
+
 DRY_RUN=0
 NO_PUSH=0
 BUMP=""
@@ -28,40 +32,40 @@ usage() {
 }
 
 is_semver() {
-    [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+    [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 }
 
 for arg in "$@"; do
     case "$arg" in
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        --dry-run) DRY_RUN=1 ;;
-        --no-push) NO_PUSH=1 ;;
-        patch|minor|major)
-            if [[ -n "$BUMP" ]]; then
-                echo "✗ extra argument: $arg" >&2
-                exit 1
-            fi
-            BUMP="$arg"
-            ;;
-        -*)
-            echo "✗ unknown option: $arg" >&2
-            usage >&2
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    --dry-run) DRY_RUN=1 ;;
+    --no-push) NO_PUSH=1 ;;
+    patch | minor | major)
+        if [[ -n $BUMP ]]; then
+            echo "✗ extra argument: $arg" >&2
             exit 1
-            ;;
-        *)
-            if [[ -n "$BUMP" ]]; then
-                echo "✗ extra argument: $arg" >&2
-                exit 1
-            fi
-            if ! is_semver "$arg"; then
-                echo "✗ version must be X.Y.Z (got $arg)" >&2
-                exit 1
-            fi
-            BUMP="$arg"
-            ;;
+        fi
+        BUMP="$arg"
+        ;;
+    -*)
+        echo "✗ unknown option: $arg" >&2
+        usage >&2
+        exit 1
+        ;;
+    *)
+        if [[ -n $BUMP ]]; then
+            echo "✗ extra argument: $arg" >&2
+            exit 1
+        fi
+        if ! is_semver "$arg"; then
+            echo "✗ version must be X.Y.Z (got $arg)" >&2
+            exit 1
+        fi
+        BUMP="$arg"
+        ;;
     esac
 done
 
@@ -76,13 +80,13 @@ if ! is_semver "$CURRENT"; then
     exit 1
 fi
 
-IFS=. read -r MAJOR MINOR PATCH <<< "$CURRENT"
+IFS=. read -r MAJOR MINOR PATCH <<<"$CURRENT"
 case "$BUMP" in
-    "") NEW="$CURRENT" ;;
-    patch) NEW="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
-    minor) NEW="${MAJOR}.$((MINOR + 1)).0" ;;
-    major) NEW="$((MAJOR + 1)).0.0" ;;
-    *) NEW="$BUMP" ;;
+"") NEW="$CURRENT" ;;
+patch) NEW="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+minor) NEW="${MAJOR}.$((MINOR + 1)).0" ;;
+major) NEW="$((MAJOR + 1)).0.0" ;;
+*) NEW="$BUMP" ;;
 esac
 
 TAG="r${NEW}"
@@ -122,14 +126,14 @@ echo "Git tag:         ${TAG}"
 echo "Store kpackage:  ${ARCHIVE_NAME} + ${ZAI_ARCHIVE_NAME}"
 echo "Source archive:  ${SRC_ARCHIVE_NAME}"
 echo "Prefix:          ${NAME}-${NEW}/"
-if [[ "$NO_PUSH" -eq 1 ]]; then
+if [[ $NO_PUSH -eq 1 ]]; then
     echo "Push:            no"
 else
     echo "Push:            origin + GitHub release"
     echo "Asset URL:       ${ASSET_URL}"
 fi
 
-if [[ "$DRY_RUN" -eq 1 ]]; then
+if [[ $DRY_RUN -eq 1 ]]; then
     echo
     echo "Dry run — nothing written, tagged, or pushed."
     exit 0
@@ -150,7 +154,7 @@ restore_version_files() {
 }
 
 apply_versions() {
-    if [[ "$NEW" != "$CURRENT" ]]; then
+    if [[ $NEW != "$CURRENT" ]]; then
         # yarn has no `npm version` equivalent that takes an explicit X.Y.Z,
         # so rewrite package.json directly (same 2-space formatting).
         node -e '
@@ -162,7 +166,7 @@ apply_versions() {
         ' "$ROOT/package.json" "$NEW"
     fi
     local tsx="$ROOT/node_modules/.bin/tsx"
-    if [[ ! -x "$tsx" ]]; then
+    if [[ ! -x $tsx ]]; then
         echo "✗ tsx not found; run yarn install" >&2
         return 1
     fi
@@ -204,7 +208,7 @@ while IFS= read -r line; do
     top="$line"
     break
 done < <(tar -tzf "$SRC_ARCHIVE")
-if [[ "$top" != "${NAME}-${NEW}/" ]]; then
+if [[ $top != "${NAME}-${NEW}/" ]]; then
     echo "✗ source prefix is ${top:-empty}, expected ${NAME}-${NEW}/" >&2
     git tag -d "$TAG" >/dev/null
     exit 1
@@ -218,14 +222,14 @@ if ! bash "$ROOT/scripts/pack-plasmoid.sh"; then
     exit 1
 fi
 for archive in "$ARCHIVE" "$ZAI_ARCHIVE"; do
-    if [[ ! -f "$archive" ]]; then
+    if [[ ! -f $archive ]]; then
         echo "✗ missing $archive" >&2
         git tag -d "$TAG" >/dev/null
         exit 1
     fi
 done
 
-if [[ "$NO_PUSH" -eq 1 ]]; then
+if [[ $NO_PUSH -eq 1 ]]; then
     echo
     echo "Tagged ${TAG} locally. Push later with:"
     echo "  git push --atomic origin HEAD refs/tags/${TAG}"

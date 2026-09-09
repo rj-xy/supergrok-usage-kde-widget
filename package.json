@@ -11,7 +11,7 @@
   },
   "scripts": {
     "plasma:restart": "systemctl --user restart plasma-plasmashell",
-    "build": "tsc && node scripts/emit-qml-logic.ts",
+    "build": "bash scripts/guard-packages.sh && tsc && node scripts/emit-qml-logic.ts",
     "check": "tsc --noEmit",
     "test": "yarn run build && node --test tests/*.test.ts",
     "widget:init": "bash scripts/install.sh",

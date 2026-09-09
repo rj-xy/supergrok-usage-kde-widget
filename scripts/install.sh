@@ -8,37 +8,43 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=scripts/guard-packages.sh
+source "$ROOT/scripts/guard-packages.sh"
+
 COPY=0
 ADD_PANEL=0
 
 for arg in "$@"; do
     case "$arg" in
-        --copy) COPY=1 ;;
-        --add-to-panel) ADD_PANEL=1 ;;
-        -h|--help)
-            echo "Usage: $0 [--copy] [--add-to-panel]"
-            echo "  --copy           copy files instead of symlinking this checkout"
-            echo "  --add-to-panel   add both widgets to the first Plasma panel"
-            exit 0
-            ;;
-        *)
-            echo "unknown argument: $arg" >&2
-            exit 1
-            ;;
+    --copy) COPY=1 ;;
+    --add-to-panel) ADD_PANEL=1 ;;
+    -h | --help)
+        echo "Usage: $0 [--copy] [--add-to-panel]"
+        echo "  --copy           copy files instead of symlinking this checkout"
+        echo "  --add-to-panel   add both widgets to the first Plasma panel"
+        exit 0
+        ;;
+    *)
+        echo "unknown argument: $arg" >&2
+        exit 1
+        ;;
     esac
 done
 
 if command -v yarn >/dev/null 2>&1; then
     if [[ ! -d "$ROOT/node_modules/typescript" ]]; then
-        echo "› yarn install"
+        echo "▶️ yarn install"
         (cd "$ROOT" && yarn install)
     fi
-    echo "› yarn run build"
+    echo "▶️ yarn run build"
     (cd "$ROOT" && yarn run build)
 elif [[ ! -f "$ROOT/dist/grok/cli.js" || ! -f "$ROOT/dist/zai/cli.js" ]]; then
     echo "✗ yarn not found and dist/ is missing — install Yarn (corepack enable)" >&2
     exit 1
 fi
+
+guard_packages
 
 install -d "$HOME/.local/bin"
 install -d "$HOME/.local/share/plasma/plasmoids"
@@ -55,33 +61,33 @@ install_widget() {
     chmod 0755 "$pkg_root/contents/code/$launcher"
 
     # Drop dest links first so later writes do not follow them into the repo.
-    if [[ -L "$applet_dest" ]]; then
+    if [[ -L $applet_dest ]]; then
         rm -f -- "$applet_dest"
-    elif [[ -e "$applet_dest" ]]; then
+    elif [[ -e $applet_dest ]]; then
         rm -rf -- "$applet_dest"
     fi
-    if [[ -L "$bin_dest" || -e "$bin_dest" ]]; then
+    if [[ -L $bin_dest || -e $bin_dest ]]; then
         rm -f -- "$bin_dest"
     fi
 
-    if [[ "$COPY" -eq 1 ]]; then
-        cat > "$bin_dest" <<EOF
+    if [[ $COPY -eq 1 ]]; then
+        cat >"$bin_dest" <<EOF
 #!/usr/bin/env bash
 export ${env_prefix}_ROOT=$(printf '%q' "$ROOT")
 exec $(printf '%q' "$pkg_root/contents/code/$launcher") "\$@"
 EOF
         chmod 0755 "$bin_dest"
-        echo "› wrote $bin_dest (${env_prefix}_ROOT=$ROOT)"
+        echo "▶️ wrote $bin_dest (${env_prefix}_ROOT=$ROOT)"
         cp -a "$pkg_root" "$applet_dest"
         install -d "$applet_dest/contents/code/cli"
         cp -a "$ROOT"/dist/*.js "$applet_dest/contents/code/cli/"
         cp -a "$ROOT/dist/$vendor" "$applet_dest/contents/code/cli/"
-        echo "› copied applet → $applet_dest"
+        echo "▶️ copied applet → $applet_dest"
     else
         ln -sfn "$pkg_root/contents/code/$launcher" "$bin_dest"
-        echo "› linked $bin_dest → $pkg_root/contents/code/$launcher"
+        echo "▶️ linked $bin_dest → $pkg_root/contents/code/$launcher"
         ln -sfn "$pkg_root" "$applet_dest"
-        echo "› linked $applet_dest → $pkg_root"
+        echo "▶️ linked $applet_dest → $pkg_root"
     fi
 }
 
@@ -101,7 +107,7 @@ echo "Test:             ~/.local/bin/supergrok-usage-kde-widget --pretty"
 echo "                  ~/.local/bin/zai-usage-kde-widget --pretty"
 echo "Add to panel:     yarn widget:panel"
 
-if [[ "$ADD_PANEL" -eq 1 ]]; then
+if [[ $ADD_PANEL -eq 1 ]]; then
     if command -v qdbus6 >/dev/null 2>&1; then
         QDBUS=qdbus6
     elif command -v qdbus >/dev/null 2>&1; then

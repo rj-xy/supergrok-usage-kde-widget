@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "com.rj-xy.metausage",
+        "Name": "Meta AI Usage",
+        "Description": "Muse weekly usage (coding subscription)",
+        "Icon": "speedometer",
+        "Category": "System Information",
+        "License": "MIT",
+        "Version": "1.3.0",
+        "Website": "https://github.com/rj-xy/supergrok-usage-kde-widget",
+        "EnabledByDefault": true,
+        "FormFactors": [
+            "desktop"
+        ]
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const PACKAGE_DIRS = ["package-grok", "package-zai"];
+const PACKAGE_DIRS = ["package-grok", "package-zai", "package-meta"];
 
 function stripConstsImports(source: string): string {
   return source

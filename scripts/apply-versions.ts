@@ -10,7 +10,11 @@ type PlasmaMetadata = {
   };
 };
 
-const METADATA_PATHS = ["package-grok/metadata.json", "package-zai/metadata.json"];
+const METADATA_PATHS = [
+  "package-grok/metadata.json",
+  "package-zai/metadata.json",
+  "package-meta/metadata.json",
+];
 
 export function applyVersions(
   version: string,
@@ -59,6 +63,18 @@ export function applyVersions(
     throw new Error("failed to update USER_AGENT in src/zai/consts.ts");
   if (nextZai !== zaiConsts)
     writeFileSync(zaiConstsPath, nextZai);
+
+  const metaConstsPath = join(root, "src", "meta", "consts.ts");
+  const metaConsts = readFileSync(metaConstsPath, "utf8");
+  const nextMeta = metaConsts
+    .replace(
+      /export const USER_AGENT = "meta-usage-kde-widget\/[^"]*";/,
+      `export const USER_AGENT = "meta-usage-kde-widget/${maj}.${min}";`,
+    );
+  if (!nextMeta.includes(`export const USER_AGENT = "meta-usage-kde-widget/${maj}.${min}";`))
+    throw new Error("failed to update USER_AGENT in src/meta/consts.ts");
+  if (nextMeta !== metaConsts)
+    writeFileSync(metaConstsPath, nextMeta);
 }
 
 const entry = process.argv[1];

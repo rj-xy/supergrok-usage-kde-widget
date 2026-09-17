@@ -61,6 +61,32 @@ test("pack-plasmoid writes a zai kpackage with metadata.json at the root", () =>
   }
 });
 
+test("pack-plasmoid writes a meta kpackage with metadata.json at the root", () => {
+  const dir = mkdtempSync(join(tmpdir(), "pack-plasmoid-"));
+  const out = join(dir, "meta.tar.gz");
+  try {
+    execFileSync("bash", ["scripts/pack-plasmoid.sh", "--only=meta", `--out=${out}`], {
+      cwd: root,
+      stdio: "pipe",
+    });
+    const names = listTar(out);
+    assert.ok(names.includes("metadata.json"), names.join("\n"));
+    assert.ok(names.includes("contents/ui/main.qml"), names.join("\n"));
+    assert.ok(names.includes("contents/ui/SegmentedBar.qml"), names.join("\n"));
+    assert.ok(names.includes("contents/ui/UsageBar.qml"), names.join("\n"));
+    assert.ok(names.includes("contents/code/meta-usage-kde-widget"), names.join("\n"));
+    assert.ok(names.includes("contents/code/cli/meta/cli.js"), names.join("\n"));
+    assert.ok(names.includes("contents/code/cli/meta/fetcher.js"), names.join("\n"));
+    assert.ok(names.includes("contents/code/cli/logic.js"), names.join("\n"));
+    assert.equal(names.some((n) => n === "package-meta/metadata.json" || n.endsWith("/package-meta/metadata.json")), false);
+    assert.equal(names.some((n) => n.startsWith("meta-usage-kde-widget-")), false);
+    assert.equal(names.includes("contents/code/cli/grok/cli.js"), false);
+    assert.equal(names.includes("contents/code/cli/zai/cli.js"), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("pack-plasmoid --out without --only is rejected", () => {
   const dir = mkdtempSync(join(tmpdir(), "pack-plasmoid-"));
   try {

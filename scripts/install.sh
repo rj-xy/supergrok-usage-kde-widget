@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Install both usage fetchers (SuperGrok + Z.ai) and Plasma 6 widgets for the
-# current user. Default is a symlink so edits in this checkout apply after a
-# plasmashell restart.
+# Install the usage fetchers (SuperGrok + Z.ai + Meta AI) and Plasma 6 widgets
+# for the current user. Default is a symlink so edits in this checkout apply
+# after a plasmashell restart.
 #
 # Never use kpackagetool on a dest that is a symlink into this repo: it follows
 # the link and deletes package-grok/.
@@ -22,7 +22,7 @@ for arg in "$@"; do
     -h | --help)
         echo "Usage: $0 [--copy] [--add-to-panel]"
         echo "  --copy           copy files instead of symlinking this checkout"
-        echo "  --add-to-panel   add both widgets to the first Plasma panel"
+        echo "  --add-to-panel   add all widgets to the first Plasma panel"
         exit 0
         ;;
     *)
@@ -39,7 +39,7 @@ if command -v yarn >/dev/null 2>&1; then
     fi
     echo "▶️ yarn run build"
     (cd "$ROOT" && yarn run build)
-elif [[ ! -f "$ROOT/dist/grok/cli.js" || ! -f "$ROOT/dist/zai/cli.js" ]]; then
+elif [[ ! -f "$ROOT/dist/grok/cli.js" || ! -f "$ROOT/dist/zai/cli.js" || ! -f "$ROOT/dist/meta/cli.js" ]]; then
     echo "✗ yarn not found and dist/ is missing — install Yarn (corepack enable)" >&2
     exit 1
 fi
@@ -95,16 +95,19 @@ install_widget package-grok com.rj-xy.supergrokusage supergrok-usage-kde-widget 
     "$HOME/.local/bin/supergrok-usage-kde-widget" SUPERGROK grok
 install_widget package-zai com.rj-xy.zaiusage zai-usage-kde-widget \
     "$HOME/.local/bin/zai-usage-kde-widget" ZAI zai
+install_widget package-meta com.rj-xy.metausage meta-usage-kde-widget \
+    "$HOME/.local/bin/meta-usage-kde-widget" META meta
 
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
     kbuildsycoca6 >/dev/null 2>&1 || true
 fi
 
 echo
-echo "Widgets: SuperGrok Usage + Z.ai Usage"
+echo "Widgets: SuperGrok Usage + Z.ai Usage + Meta AI Usage"
 echo "After QML edits:  yarn run plasma:restart"
 echo "Test:             ~/.local/bin/supergrok-usage-kde-widget --pretty"
 echo "                  ~/.local/bin/zai-usage-kde-widget --pretty"
+echo "                  ~/.local/bin/meta-usage-kde-widget --pretty"
 echo "Add to panel:     yarn widget:panel"
 
 if [[ $ADD_PANEL -eq 1 ]]; then
@@ -116,7 +119,7 @@ if [[ $ADD_PANEL -eq 1 ]]; then
         echo "✗ qdbus not found; add the widgets from the panel menu" >&2
         exit 1
     fi
-    for id in com.rj-xy.supergrokusage com.rj-xy.zaiusage; do
+    for id in com.rj-xy.supergrokusage com.rj-xy.zaiusage com.rj-xy.metausage; do
         "$QDBUS" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
             var already = false;
             var panels = panels();

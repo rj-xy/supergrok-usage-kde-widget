@@ -92,9 +92,11 @@ esac
 TAG="r${NEW}"
 ARCHIVE_NAME="${NAME}-${NEW}.tar.gz"
 ZAI_ARCHIVE_NAME="zai-usage-kde-widget-${NEW}.tar.gz"
+META_ARCHIVE_NAME="meta-usage-kde-widget-${NEW}.tar.gz"
 SRC_ARCHIVE_NAME="${NAME}-${NEW}-src.tar.gz"
 ARCHIVE="$ROOT/dist/${ARCHIVE_NAME}"
 ZAI_ARCHIVE="$ROOT/dist/${ZAI_ARCHIVE_NAME}"
+META_ARCHIVE="$ROOT/dist/${META_ARCHIVE_NAME}"
 SRC_ARCHIVE="$ROOT/dist/${SRC_ARCHIVE_NAME}"
 ASSET_URL="${REPO_URL}/releases/download/${TAG}/${ARCHIVE_NAME}"
 TAG_URL="${REPO_URL}/releases/tag/${TAG}"
@@ -123,7 +125,7 @@ fi
 echo "Current version: ${CURRENT}"
 echo "Release version: ${NEW}"
 echo "Git tag:         ${TAG}"
-echo "Store kpackage:  ${ARCHIVE_NAME} + ${ZAI_ARCHIVE_NAME}"
+echo "Store kpackage:  ${ARCHIVE_NAME} + ${ZAI_ARCHIVE_NAME} + ${META_ARCHIVE_NAME}"
 echo "Source archive:  ${SRC_ARCHIVE_NAME}"
 echo "Prefix:          ${NAME}-${NEW}/"
 if [[ $NO_PUSH -eq 1 ]]; then
@@ -143,10 +145,13 @@ RESTORE_PATHS=(
     package.json
     package-grok/metadata.json
     package-zai/metadata.json
+    package-meta/metadata.json
     src/grok/consts.ts
     src/zai/consts.ts
+    src/meta/consts.ts
     package-grok/contents/code/logic.js
     package-zai/contents/code/logic.js
+    package-meta/contents/code/logic.js
 )
 
 restore_version_files() {
@@ -215,13 +220,13 @@ if [[ $top != "${NAME}-${NEW}/" ]]; then
 fi
 echo "› wrote ${SRC_ARCHIVE}"
 
-echo "› store kpackages ${ARCHIVE_NAME} + ${ZAI_ARCHIVE_NAME}"
+echo "› store kpackages ${ARCHIVE_NAME} + ${ZAI_ARCHIVE_NAME} + ${META_ARCHIVE_NAME}"
 if ! bash "$ROOT/scripts/pack-plasmoid.sh"; then
     echo "✗ failed to pack kpackage" >&2
     git tag -d "$TAG" >/dev/null
     exit 1
 fi
-for archive in "$ARCHIVE" "$ZAI_ARCHIVE"; do
+for archive in "$ARCHIVE" "$ZAI_ARCHIVE" "$META_ARCHIVE"; do
     if [[ ! -f $archive ]]; then
         echo "✗ missing $archive" >&2
         git tag -d "$TAG" >/dev/null
@@ -253,6 +258,7 @@ gh release create "$TAG" \
     --generate-notes \
     "$ARCHIVE" \
     "$ZAI_ARCHIVE" \
+    "$META_ARCHIVE" \
     "$SRC_ARCHIVE"
 
 echo

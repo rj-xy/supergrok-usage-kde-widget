@@ -1,4 +1,4 @@
-// Generic constants shared by every usage widget (Grok, Z.ai, …).
+// Generic constants shared by every usage widget (Grok, Z.ai, Meta AI, …).
 
 export const DEFAULT_TIMEOUT_SECS = 30;
 export const MIN_TIMEOUT_SECS = 10;

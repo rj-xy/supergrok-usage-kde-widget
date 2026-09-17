@@ -17,7 +17,7 @@ ONLY=""
 
 usage() {
     echo "Usage: $0 [--only=NAME] [--out=FILE] [--validate]"
-    echo "  NAME: supergrok | zai (default: both)"
+    echo "  NAME: supergrok | zai | meta (default: all)"
     echo "  writes dist/<name>-<version>.tar.gz (and .plasmoid if zip is available)"
     echo "  --out=FILE requires --only=NAME"
 }
@@ -44,11 +44,11 @@ for arg in "$@"; do
 done
 
 if [[ -n $OUT && -z $ONLY ]]; then
-    echo "✗ --out=FILE also needs --only=supergrok|zai" >&2
+    echo "✗ --out=FILE also needs --only=supergrok|zai|meta" >&2
     exit 1
 fi
 case "$ONLY" in
-"" | supergrok | zai) ;;
+"" | supergrok | zai | meta) ;;
 *)
     echo "✗ unknown widget: $ONLY" >&2
     exit 1
@@ -64,12 +64,15 @@ fi
 if [[ -z $ONLY || $ONLY == "zai" ]]; then
     WIDGETS+=("package-zai|zai-usage-kde-widget|zai-usage-kde-widget|zai")
 fi
+if [[ -z $ONLY || $ONLY == "meta" ]]; then
+    WIDGETS+=("package-meta|meta-usage-kde-widget|meta-usage-kde-widget|meta")
+fi
 
-if [[ ! -f "$ROOT/dist/grok/cli.js" || ! -f "$ROOT/dist/zai/cli.js" ]]; then
+if [[ ! -f "$ROOT/dist/grok/cli.js" || ! -f "$ROOT/dist/zai/cli.js" || ! -f "$ROOT/dist/meta/cli.js" ]]; then
     echo "› yarn run build"
     (cd "$ROOT" && yarn run build)
 fi
-for cli in grok/cli.js zai/cli.js; do
+for cli in grok/cli.js zai/cli.js meta/cli.js; do
     if [[ ! -f "$ROOT/dist/$cli" ]]; then
         echo "✗ dist/$cli missing after build" >&2
         exit 1
@@ -141,7 +144,7 @@ pack_one() {
         rm -f -- "$tmp"
         exit 1
     fi
-    if grep -qE '(^|/)package(-grok|-zai)?/' <<<"$listing"; then
+    if grep -qE '(^|/)package(-grok|-zai|-meta)?/' <<<"$listing"; then
         echo "✗ archive nests package dirs — Get New Widgets will reject it" >&2
         rm -f -- "$tmp"
         exit 1

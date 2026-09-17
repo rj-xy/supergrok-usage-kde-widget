@@ -1,6 +1,6 @@
-# SuperGrok / Z.ai Usage — KDE Plasma 6 Widgets
+# SuperGrok / Z.ai / Meta AI Usage — KDE Plasma 6 Widgets
 
-Two Plasma 6 panel widgets for AI plan quotas.
+Three Plasma 6 panel widgets for AI plan quotas.
 
 ![Panel chip showing Grok 20% used](screenshots/taskbar-widget.png)
 ![Popup with 20% used, Grok Build 15%, Chat 3%, Imagine 2%](screenshots/taskbar-widget-expanded.png)
@@ -10,12 +10,13 @@ Two Plasma 6 panel widgets for AI plan quotas.
 
 - **SuperGrok Usage** — weekly pool: percent used, reset time, Build / Chat / Imagine split.
 - **Z.ai Usage** — GLM Coding Plan: 5-hour and weekly windows with percent used, credits, reset times, and a per-model split (GLM 5.3, GLM 5.3 Flash, …).
+- **Meta AI Usage** — Muse coding subscription: weekly window with percent used and reset time.
 
 ## Install
 
 **KDE Store** (SuperGrok widget only): *Add Widgets… → Get New…* → search **SuperGrok Usage** ([store.kde.org/p/2368916/](https://store.kde.org/p/2368916/)).
 
-**From this checkout** (both widgets):
+**From this checkout** (all three widgets):
 
 ```bash
 yarn install
@@ -27,17 +28,21 @@ yarn plasma:restart
 
 - **Grok**: `grok login` token, falling back to opencode (`supergrok`/`xai` entry), or `GROK_API_KEY`.
 - **Z.ai**: opencode GLM Coding Plan key (`zai-coding-plan`), or `ZAI_API_KEY`.
+- **Meta AI**: `muse login` token, falling back to opencode (`meta` entry), or `META_API_KEY`.
 - Fetching needs Node.js on your `PATH`.
 - The Z.ai quota endpoints are undocumented and may change without notice.
+- Meta AI has no quota endpoint: each refresh makes one tiny metered
+  `/responses` call (a few tokens) and reads the same usage frame as the
+  `muse` TUI's `/usage` panel.
 
 ## Commands
 
 - `yarn build` — compile TypeScript + emit QML `logic.js`
 - `yarn check` — typecheck only
 - `yarn test` — build, then run tests
-- `yarn widget:init` — (re)install both widgets, symlinked to this checkout
+- `yarn widget:init` — (re)install all widgets, symlinked to this checkout
 - `yarn widget:copy` — install as copies, independent of this checkout
-- `yarn widget:panel` — symlink install + add both widgets to the panel
+- `yarn widget:panel` — symlink install + add all widgets to the panel
 - `yarn widget:remove` — remove widgets, helpers, and caches
 - `yarn dist` — build the KDE Store archives into `dist/` (what Get New Widgets installs)
 - `yarn release` — bump/tag, pack, and publish a GitHub release (`yarn release -- minor`, `--dry-run`, …)
@@ -49,13 +54,13 @@ avoided because yarn reserves it for its own builtin.)
 
 > **Never run `kpackagetool6 --remove` (or the Plasma UI's "Uninstall Widget")
 > while the widgets are symlinked** — it follows the symlink and deletes
-> `package-grok/`/`package-zai/` from the repo. Use `yarn widget:remove` instead.
+> `package-grok/`/`package-zai/`/`package-meta/` from the repo. Use `yarn widget:remove` instead.
 > If the files do get wiped, the next `yarn build`/`widget:init`/`dist`/`release`
 > auto-restores them from git.
 
 ## Layout
 
-- `src/` — shared code; `src/grok/`, `src/zai/` — vendor fetchers
-- `package-grok/`, `package-zai/` — the plasmoids
+- `src/` — shared code; `src/grok/`, `src/zai/`, `src/meta/` — vendor fetchers
+- `package-grok/`, `package-zai/`, `package-meta/` — the plasmoids
 
 Based on [kde-ai-usage](https://github.com/Muddyblack/kde-ai-usage) and [ai-usagebar](https://github.com/akitaonrails/ai-usagebar).

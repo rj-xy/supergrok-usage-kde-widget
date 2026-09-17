@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Guard: package-grok/ and package-zai/ are symlinked into
+# Guard: package-grok/, package-zai/, and package-meta/ are symlinked into
 # ~/.local/share/plasma/plasmoids, and "kpackagetool6 --remove <id>" (also
 # "Uninstall Widget" in the Plasma UI, or scripts that call it) follows those
 # links and deletes the tracked files inside this repo.
@@ -18,7 +18,7 @@ GUARD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 _guard_intact() {
     local pkg
-    for pkg in package-grok package-zai; do
+    for pkg in package-grok package-zai package-meta; do
         [[ -f "${ROOT:-$GUARD_ROOT}/$pkg/metadata.json" ]] || return 1
     done
     return 0
@@ -27,19 +27,19 @@ _guard_intact() {
 guard_packages() {
     _guard_intact && return 0
 
-    echo "⚠️ package-grok/package-zai lost files — kpackagetool --remove followed the plasmoid symlink" >&2
+    echo "⚠️ package-grok/package-zai/package-meta lost files — kpackagetool --remove followed the plasmoid symlink" >&2
     if [[ "$(git -C "${ROOT:-$GUARD_ROOT}" rev-parse --is-inside-work-tree 2>/dev/null)" == "true" ]]; then
-        echo "▶️ git checkout -- package-grok package-zai" >&2
-        if ! git -C "${ROOT:-$GUARD_ROOT}" checkout -- package-grok package-zai; then
+        echo "▶️ git checkout -- package-grok package-zai package-meta" >&2
+        if ! git -C "${ROOT:-$GUARD_ROOT}" checkout -- package-grok package-zai package-meta; then
             echo "✗ git restore failed" >&2
             exit 1
         fi
     fi
     if ! _guard_intact; then
-        echo "✗ package files still missing — restore them with: git checkout -- package-grok package-zai" >&2
+        echo "✗ package files still missing — restore them with: git checkout -- package-grok package-zai package-meta" >&2
         exit 1
     fi
-    echo "✔ restored package-grok/package-zai from git" >&2
+    echo "✔ restored package-grok/package-zai/package-meta from git" >&2
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then

@@ -4,16 +4,18 @@
 set -euo pipefail
 
 # Never use kpackagetool6 --remove here: while the applet dests are symlinks
-# into this repo it follows the link and deletes package-grok/package-zai.
+# into this repo it follows the link and deletes the package-*/ dirs.
 # Removing the dests below plus kbuildsycoca6 unregisters them just as well.
-IDS=(com.rj-xy.zaiusage com.rj.supergrokusage com.rj-xy.supergrokusage)
+IDS=(com.rj-xy.zaiusage com.rj.supergrokusage com.rj-xy.supergrokusage com.rj-xy.metausage)
 BIN_DESTS=(
     "$HOME/.local/bin/supergrok-usage-kde-widget"
     "$HOME/.local/bin/zai-usage-kde-widget"
+    "$HOME/.local/bin/meta-usage-kde-widget"
 )
 CACHE_DIRS=(
     "$HOME/.cache/supergrok-usage-kde-widget"
     "$HOME/.cache/zai-usage-kde-widget"
+    "$HOME/.cache/meta-usage-kde-widget"
 )
 
 for id in "${IDS[@]}"; do
@@ -42,4 +44,4 @@ if command -v kbuildsycoca6 >/dev/null 2>&1; then
     kbuildsycoca6 >/dev/null 2>&1 || true
 fi
 
-echo "Uninstalled SuperGrok Usage and Z.ai Usage (logins left in place)"
+echo "Uninstalled SuperGrok Usage, Z.ai Usage, and Meta AI Usage (logins left in place)"

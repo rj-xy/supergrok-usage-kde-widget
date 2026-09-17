@@ -1,6 +1,6 @@
 .pragma library
 // Generated from src/consts.ts and src/logic.ts by `yarn run build`. Do not edit.
-// Generic constants shared by every usage widget (Grok, Z.ai, …).
+// Generic constants shared by every usage widget (Grok, Z.ai, Meta AI, …).
 const DEFAULT_TIMEOUT_SECS = 30;
 const MIN_TIMEOUT_SECS = 10;
 const MAX_TIMEOUT_SECS = 120;
